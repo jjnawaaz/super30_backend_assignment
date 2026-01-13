@@ -1,26 +1,11 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { prisma } from "../lib/prismaClient";
 import { hashPassword } from "../lib/bcrypt";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { AuthUser } from "../types/authType";
-
-type UserSignUpBody = {
-  username: string;
-  password: string;
-};
-
-type UserLoginBody = {
-  username: string;
-  password: string;
-};
-
-type UserBooking = {
-  rentPerDay: number;
-  days: number;
-  carName: string;
-};
+import { UserBooking, UserLoginBody, UserSignUpBody } from "../types/userTypes";
+import { TokenPayload } from "../types/authType";
 
 // User Signup
 
@@ -149,7 +134,7 @@ export function UserLogOut(req: Request, res: Response) {
 // Car rental booking
 
 export async function UserBooking(req: Request, res: Response) {
-  const userPayload = res.locals.user as AuthUser;
+  const userPayload = req.user as TokenPayload;
   if (!userPayload) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -201,7 +186,7 @@ export async function UserBooking(req: Request, res: Response) {
 // Cancel Booking
 
 export async function CancelUserBooking(req: Request, res: Response) {
-  const userPayload = res.locals.user as AuthUser;
+  const userPayload = req.user as TokenPayload;
   if (!userPayload) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -249,7 +234,7 @@ export async function CancelUserBooking(req: Request, res: Response) {
 // Complete Booking
 
 export async function CompleteUserBooking(req: Request, res: Response) {
-  const userPayload = res.locals.user as AuthUser;
+  const userPayload = req.user as TokenPayload;
   if (!userPayload) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -297,7 +282,7 @@ export async function CompleteUserBooking(req: Request, res: Response) {
 // Delete Booking
 
 export async function DeleteUserBooking(req: Request, res: Response) {
-  const userPayload = res.locals.user as AuthUser;
+  const userPayload = req.user as TokenPayload;
   if (!userPayload) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -327,6 +312,41 @@ export async function DeleteUserBooking(req: Request, res: Response) {
     return res.status(200).json({
       message: "Booking deleted",
       success: true,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      success: false,
+    });
+  }
+}
+
+// Get Booking
+export async function GetUserBooking(req: Request, res: Response) {
+  const userPayload = req.user as TokenPayload;
+  if (!userPayload) {
+    return res.status(401).json({
+      message: "Unauthorized User",
+      success: false,
+    });
+  }
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: Number(userPayload.id),
+      },
+    });
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        message: "No Bookings Found",
+        success: false,
+      });
+    }
+    return res.status(200).json({
+      message: "Successfully fetched bookings",
+      success: true,
+      bookings: bookings,
     });
   } catch (err) {
     console.log(err);
